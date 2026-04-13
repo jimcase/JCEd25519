@@ -220,8 +220,10 @@ public class jcmathlib {
          * Computes (this ^ exp % mod) using RSA algorithm and store results into this.
          */
         public void modExp(BigNat exp, BigNat mod) {
-            if (!OperationSupport.getInstance().RSA_EXP)
-                ISOException.throwIt(ReturnCodes.SW_OPERATION_NOT_SUPPORTED);
+            if (!OperationSupport.getInstance().RSA_EXP) {
+                modExpSoftware(exp, mod);
+                return;
+            }
             if (OperationSupport.getInstance().RSA_CHECK_EXP_ONE && exp.equals((byte) 1))
                 return;
             if (!OperationSupport.getInstance().RSA_SQ && exp.equals((byte) 2)) {
@@ -307,6 +309,32 @@ public class jcmathlib {
             }
             setSize(mod.length());
             copy(tmpMod);
+        }
+
+        private void modExpSoftware(BigNat exp, BigNat mod) {
+            BigNat base = rm.BN_F;
+            BigNat result = rm.BN_G;
+            byte[] expBytes = rm.ARRAY_A;
+            
+            exp.copyToByteArray(expBytes, (short) 0);
+            
+            base.clone(this);
+            result.setSize(mod.length());
+            result.zero();
+            result.increment();
+            
+            short expLen = exp.length();
+            for (short i = (short) (expLen - 1); i >= 0; i--) {
+                byte expByte = expBytes[i];
+                for (short j = (short) 7; j >= 0; j--) {
+                    if ((expByte & (1 << j)) != 0) {
+                        result.modMult(base, mod);
+                    }
+                    base.modSq(mod);
+                }
+            }
+            
+            clone(result);
         }
 
         /**
@@ -2214,13 +2242,19 @@ public class jcmathlib {
         public void setCard(short card_identifier) {
             switch (card_identifier) {
                 case SIMULATOR:
-                    RSA_KEY_REFRESH = true;
-                    RSA_PREPEND_ZEROS = true;
+                    RSA_KEY_REFRESH = false;
+                    RSA_PREPEND_ZEROS = false;
                     RSA_RESIZE_MOD = false;
+                    RSA_SQ = false;
+                    RSA_PUB = false;
+                    RSA_EXP = false;
+                    RSA_CHECK_EXP_ONE = false;
                     EC_HW_XY = true;
+                    EC_HW_X = false;
                     EC_HW_ADD = true;
                     EC_SW_DOUBLE = true;
                     EC_PRECISE_BITLENGTH = false;
+                    System.out.println("[JCMathLib] SIMULATOR detected -> RSA disabled (100% software)");
                     break;
                 case JCOP21:
                     RSA_PUB = true;

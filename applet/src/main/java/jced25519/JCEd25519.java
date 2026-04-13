@@ -158,7 +158,7 @@ public class JCEd25519 extends Applet {
     }
 
     private void generateKeypair(APDU apdu) {
-        if (state != Consts.STATE_INITIALIZED && !DEBUG) // Disallow key overwriting
+        if (state != Consts.STATE_INITIALIZED && !DEBUG)
             ISOException.throwIt(Consts.E_INVALID_STATE);
 
         byte[] apduBuffer = apdu.getBuffer();
@@ -167,18 +167,18 @@ public class JCEd25519 extends Applet {
         random.generateData(masterKey, (short) 0, (short) 32);
         hasher.reset();
         hasher.doFinal(masterKey, (short) 0, (short) 32, ramArray, (short) 0);
-        ramArray[0] &= (byte) 0xf8; // Clear lowest three bits
-        ramArray[31] &= (byte) 0x7f; // Clear highest bit
-        ramArray[31] |= (byte) 0x40; // Set second-highest bit
+        ramArray[0] &= (byte) 0xf8;
+        ramArray[31] &= (byte) 0x7f;
+        ramArray[31] |= (byte) 0x40;
         changeEndianity(ramArray, (short) 0, (short) 32);
 
         Util.arrayCopyNonAtomic(ramArray, (short) 32, prefix, (short) 0, (short) 32);
 
         privateKey.fromByteArray(ramArray, (short) 0, (short) 32);
-        privateKey.shiftRight((short) 3); // Required by smartcards (scalar must be lesser than r)
+        privateKey.shiftRight((short) 3);
         point.setW(curve.G, (short) 0, curve.POINT_SIZE);
         point.multiplication(privateKey);
-        privateKey.fromByteArray(ramArray, (short) 0, (short) 32); // Reload private key
+        privateKey.fromByteArray(ramArray, (short) 0, (short) 32);
         privateKey.mod(curve.rBN);
 
         if(offload) {
@@ -186,8 +186,7 @@ public class JCEd25519 extends Applet {
             state = Consts.STATE_KEYGEN_OFFLOAD;
             apdu.setOutgoingAndSend((short) 0, curve.POINT_SIZE);
         } else {
-            point.multiplication(eight); // Compensate bit shift
-
+            point.multiplication(eight);
             encodeEd25519(point, publicKey, (short) 0);
 
             Util.arrayCopyNonAtomic(publicKey, (short) 0, apduBuffer, (short) 0, (short) 32);
